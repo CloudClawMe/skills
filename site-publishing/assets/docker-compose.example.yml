@@ -1,0 +1,37 @@
+# CloudClaw — пример docker-compose для приложения внутри user-container'а.
+#
+# Разместите этот файл и build-контекст (./app/, Dockerfile, и т.д.) в
+# /srv/state/projects/<name>/ — это preserved-путь CloudClaw: всё содержимое
+# переносится на новый сервер при миграции инстанса одним state-архивом.
+# Другие места (`$HOME`, `/opt/...`, `/var/...` кроме `/var/lib/docker/`)
+# не переносятся.
+#
+# Запуск:
+#   sudo systemctl enable --now docker      # если Docker ещё не включён
+#   cd /srv/state/projects/<name>/
+#   docker compose up -d
+#
+# Что важно:
+# - внутри inner-контейнера приложение слушает 3000 (например, Node);
+# - наружу контейнера (в user-container) порт пробрасывается только на loopback 127.0.0.1:19001;
+# - Nginx в user-container'е проксирует входящий трафик с :80 на этот порт
+#   (см. nginx-docker-app.conf → /etc/nginx/conf.d/<name>.conf).
+#
+# Номер 19001 выбран произвольно из диапазона 19000–19999 — выбирайте любой свободный.
+# restart: unless-stopped гарантирует, что контейнер сам поднимется после reboot
+# и после миграции инстанса на новый сервер.
+
+services:
+  app:
+    image: node:20-alpine
+    working_dir: /app
+    command: node server.js
+    volumes:
+      - ./app:/app
+    ports:
+      # ВАЖНО: bind на 127.0.0.1, а не на 0.0.0.0.
+      # Всё равно наружу контейнера порт не выставится, но на loopback чище и без конфликтов.
+      - "127.0.0.1:19001:3000"
+    environment:
+      NODE_ENV: production
+    restart: unless-stopped
