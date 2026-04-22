@@ -1,47 +1,57 @@
 # Skills
 
-Финальные версии user-facing skill'ов CloudClaw. Каждый skill — отдельная папка с исполнимым `SKILL.md` внутри; companion-файлы (например, инструкции для ассистента старого инстанса в миграции) живут в подпапках рядом.
+Публичный каталог user-facing skill'ов CloudClaw — Telegram-бота с персонализированными AI-инстансами. Каждый skill лежит в своей папке с исполнимым `SKILL.md`; companion-файлы (например, инструкции для ассистента в другом контексте) — в подпапках рядом.
 
-Общая стратегия (skill vs shared service vs enhancement) — в корневом [`../README.md`](../README.md).
+## skill-creator
+
+Skill'ы здесь создаются и валидируются с помощью `skill-creator` из [`openclaw/openclaw`](https://github.com/openclaw/openclaw/tree/main/skills/skill-creator). Он подключён как git submodule в папку `skill-creator/` с sparse-checkout только на `skills/skill-creator/`.
+
+**После первого клона репы:**
+
+```bash
+git submodule update --init skill-creator
+cd skill-creator
+git sparse-checkout set --no-cone '/skills/skill-creator/'
+git read-tree -mu HEAD
+cd ..
+```
+
+**Актуальная точка входа:** `skill-creator/skills/skill-creator/SKILL.md`.
+
+**Обновление до свежего upstream:**
+
+```bash
+cd skill-creator
+git fetch origin
+git checkout origin/main
+cd ..
+git add skill-creator
+git commit -m "Bump skill-creator to <short-sha>"
+```
 
 ## Формат SKILL.md
 
-Оформляй через плагин **skill-creator** (см. [`anthropics/skills`](https://github.com/anthropics/skills)). Требования:
+- Обязательный YAML frontmatter с полями `name` (kebab-case) и `description` — в `description` перечисляй триггер-фразы, по которым модель должна автоматически вызвать skill.
+- Тело — императив от второго лица («позови endpoint», «выдай конфиг», «дождись подтверждения»).
+- Никаких tradeoff'ов, rationale, «почему так» — только рецепт.
+- Всё, что можно убрать без потери способности выполнить задачу — убираем. Целевая длина — до 500 строк.
 
-- обязательный YAML frontmatter с полями `name` (kebab-case) и `description` — в `description` перечисляй триггер-фразы, по которым модель должна автоматически вызвать skill;
-- тело — императив от второго лица («позови endpoint», «выдай конфиг», «дождись подтверждения»);
-- никаких tradeoff'ов, rationale, «почему так» — только рецепт;
-- всё, что можно убрать без потери способности выполнить задачу — убираем. Целевая длина — до 500 строк.
+Эталонный пример: [`cloudclaw-migration-import/SKILL.md`](cloudclaw-migration-import/SKILL.md).
 
-Эталонные примеры в этой репе: [`cloudclaw-migration-import/SKILL.md`](cloudclaw-migration-import/SKILL.md), [`site-publishing/SKILL.md`](site-publishing/SKILL.md).
+## Чего не должно быть в скилле
 
-## Публичный репозиторий
+- Секретов (токенов, API-ключей, credentials) — в рантайме всё берётся из токена юзера на поде.
+- Внутренних архитектурных рассуждений, tradeoff'ов, планов развития.
+- Ссылок на приватные репо, внутренние дашборды, закрытые вики.
+- Design notes в стиле «почему мы так решили», «в будущем перейдём на Z».
 
-**Публичный GitHub-репозиторий скиллов** — [`https://github.com/CloudClawMe/skills`](https://github.com/CloudClawMe/skills). Туда попадает **содержимое папок скиллов**: `SKILL.md`, companion-файлы в подпапках, бандлы `scripts/` / `references/` / `assets/` — всё, что реально использует ассистент в рантайме.
-
-Репа **публичная**, поэтому скилл должен быть понятен стороннему разработчику и **не содержать ничего лишнего из нашей внутренней архитектуры**.
-
-**Что НЕЛЬЗЯ класть в скилл:**
-
-- секреты (tokens, API keys, credentials) — в рантайме всё берётся из внутреннего токена юзера на поде;
-- внутренние архитектурные рассуждения, tradeoff'ы, планы развития;
-- ссылки на приватные репо, внутренние дашборды, закрытые вики;
-- design notes («почему мы так решили», «в будущем перейдём на Z») — это живёт в спеках и design-документах, а не в скилле.
-
-**Что НЕ едет в публичную репу** (остаётся только здесь, в спеках):
-
-- `README.md` внутри папки скилла — design notes для нас (scope, rationale, ключевые решения, open questions); модели в рантайме они избыточны и отвлекают;
-- `_proto/` — черновики до финализации;
-- любые внутренние заметки, TODO, meta-документы.
-
-Простое правило: **если это не помогает ассистенту выполнить задачу прямо сейчас — в `CloudClawMe/skills` не публикуем.**
+Правило: **если это не помогает ассистенту выполнить задачу прямо сейчас — этому не место в `SKILL.md`.**
 
 ## Структура папки скилла
 
 ```
 <skill-name>/
 ├── SKILL.md                 # основной исполнимый skill (YAML frontmatter + императив)
-├── README.md                # (опционально) design notes — НЕ публикуется
 ├── <companion>/             # (опционально) подпапка с companion-скиллом
 │   └── SKILL.md
 ├── scripts/                 # (опционально) исполняемые скрипты
@@ -49,10 +59,10 @@
 └── assets/                  # (опционально) шаблоны, иконки, фиксированные артефакты
 ```
 
-Любой файл, до которого дотягивается `SKILL.md` (по пути или по ссылке), должен попасть в публичную репу вместе с ним.
+Любой файл, до которого дотягивается `SKILL.md` (по пути или по ссылке), должен лежать в папке скилла рядом.
 
 ## Соглашение по именам
 
-- Папка скилла — `kebab-case`, по смыслу (`site-publishing`, а не `site-publishing-skill`). Если скилл — одна половина пары, работающая в связке с companion'ом на другой стороне (инстансе, платформе), полезно namespace'нуть имя по продукту — тогда обе половины сразу читаются как пара (`cloudclaw-migration-import` + `cloudclaw-migration-export`).
+- Папка скилла — `kebab-case`, по смыслу (`site-publishing`, а не `site-publishing-skill`). Если скилл — одна половина пары, работающая в связке с companion'ом в другом контексте (инстансе, платформе), полезно namespace'нуть имя по продукту — тогда обе половины сразу читаются как пара (`cloudclaw-migration-import` + `cloudclaw-migration-export`).
 - Главный файл внутри — всегда `SKILL.md`.
 - Companion-скилл для другого контекста — подпапка с собственным `SKILL.md` (пример: `cloudclaw-migration-import/old-instance-export/SKILL.md`).
